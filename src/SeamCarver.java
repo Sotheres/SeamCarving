@@ -4,33 +4,29 @@ public class SeamCarver {
 
     private double[][] energyMatrix;
     private int[][] colorMatrix;
-    private int width;
-    private int height;
 
     public SeamCarver(Picture picture) {
         if (picture == null) {
             throw new IllegalArgumentException("Constructor's argument is null");
         }
-        width = picture.width();
-        height = picture.height();
         colorMatrix = new int[picture.width()][picture.height()];
         for (int i = 0; i < picture.width(); i++) {
             for (int j = 0; j < picture.height(); j++) {
                 colorMatrix[i][j] = picture.getRGB(i, j);
             }
         }
-        energyMatrix = new double[width][height];
-        for (int i = 0; i < width; i++) {
-            for (int j = 0; j < height; j++) {
+        energyMatrix = new double[picture.width()][picture.height()];
+        for (int i = 0; i < picture.width(); i++) {
+            for (int j = 0; j < picture.height(); j++) {
                 energyMatrix[i][j] = energy(i, j);
             }
         }
     }
 
     public Picture picture() {
-        Picture pic = new Picture(width, height);
-        for (int i = 0; i < width; i++) {
-            for (int j = 0; j < height; j++) {
+        Picture pic = new Picture(width(), height());
+        for (int i = 0; i < width(); i++) {
+            for (int j = 0; j < height(); j++) {
                 pic.setRGB(i, j, colorMatrix[i][j]);
             }
         }
@@ -38,18 +34,18 @@ public class SeamCarver {
     }
 
     public int width() {
-        return width;
+        return colorMatrix.length;
     }
 
     public int height() {
-        return height;
+        return colorMatrix[0].length;
     }
 
     public double energy(int x, int y) {
-        if (x < 0 || x > energyMatrix.length - 1 || y < 0 || y > energyMatrix[0].length - 1) {
+        if (x < 0 || x > colorMatrix.length - 1 || y < 0 || y > colorMatrix[0].length - 1) {
             throw new IllegalArgumentException("Invalid x/y value");
         }
-        if (x == 0 || x == width - 1 || y == 0 || y == height - 1) {
+        if (x == 0 || x == colorMatrix.length - 1 || y == 0 || y == colorMatrix[0].length - 1) {
             return 1000;
         }
         int rgbX1 = colorMatrix[x - 1][y];
@@ -94,7 +90,7 @@ public class SeamCarver {
     }
 
     public void removeHorizontalSeam(int[] seam) {
-        if (height <= 1) {
+        if (colorMatrix[0].length <= 1) {
             throw new IllegalArgumentException("Cannot remove, height is already 1");
         }
         transpose();
@@ -105,9 +101,6 @@ public class SeamCarver {
     private void transpose() {
         energyMatrix = transposeEnergy(energyMatrix);
         colorMatrix = transposeColor(colorMatrix);
-        int temp = height;
-        height = width;
-        width = temp;
     }
 
     private int[][] transposeColor(int[][] matrix) {
@@ -121,27 +114,42 @@ public class SeamCarver {
     }
 
     public void removeVerticalSeam(int[] seam) {
-        if (width <= 1) {
+        if (colorMatrix.length <= 1) {
             throw new IllegalArgumentException("Cannot remove, width is already 1");
         }
         validateSeam(seam);
+
+        int[][] trimmedColorMatrix = new int[colorMatrix.length - 1][colorMatrix[0].length];
         for (int i = 0; i < colorMatrix[0].length; i++) {
-            for (int j = seam[i]; j < colorMatrix.length - 1; j++) {
-                colorMatrix[j][i] = colorMatrix[j + 1][i];
+            for (int j = 0; j < seam[i]; j++) {
+                trimmedColorMatrix[j][i] = colorMatrix[j][i];
             }
-            colorMatrix[colorMatrix.length - 1][i] = -1;
+            for (int j = seam[i] + 1; j < colorMatrix.length; j++) {
+                trimmedColorMatrix[j - 1][i] = colorMatrix[j][i];
+            }
         }
-        width--;
+        colorMatrix = trimmedColorMatrix;
+
+        double[][] trimmedEnergyMatrix = new double[energyMatrix.length - 1][energyMatrix[0].length];
         for (int i = 0; i < energyMatrix[0].length; i++) {
-            if (seam[i] > 0 && seam[i] < energyMatrix.length - 1 && i > 0 && i < energyMatrix[0].length - 1) {
-                energyMatrix[seam[i] - 1][i] = energy(seam[i] - 1, i);
-                energyMatrix[seam[i] + 1][i] = energy(seam[i], i);
+            if (i > 0 && i < energyMatrix[0].length - 1) {
+                if (seam[i] == 0) {
+                    energyMatrix[seam[i] + 1][i] = energyMatrix[seam[i]][i];
+                } else if (seam[i] > 0 && seam[i] < energyMatrix.length - 1) {
+                    energyMatrix[seam[i] - 1][i] = energy(seam[i] - 1, i);
+                    energyMatrix[seam[i] + 1][i] = energy(seam[i], i);
+                } else if (seam[i] == energyMatrix.length - 1) {
+                    energyMatrix[seam[i] - 1][i] = energyMatrix[seam[i]][i];
+                }
             }
-            for (int j = seam[i]; j < energyMatrix.length - 1; j++) {
-                energyMatrix[j][i] = energyMatrix[j + 1][i];
+            for (int j = 0; j < seam[i]; j++) {
+                trimmedEnergyMatrix[j][i] = energyMatrix[j][i];
             }
-            energyMatrix[energyMatrix.length - 1][i] = 1000;
+            for (int j = seam[i] + 1; j < energyMatrix.length; j++) {
+                trimmedEnergyMatrix[j - 1][i] = energyMatrix[j][i];
+            }
         }
+        energyMatrix = trimmedEnergyMatrix;
     }
 
     private void validateSeam(int[] seam) {
@@ -151,11 +159,11 @@ public class SeamCarver {
         if (seam.length != colorMatrix[0].length) {
             throw new IllegalArgumentException("Invalid seam length");
         }
-        if (seam[0] < 0 || seam[0] > width - 1) {
+        if (seam[0] < 0 || seam[0] > colorMatrix.length - 1) {
             throw new IllegalArgumentException("Invalid seam value");
         }
         for (int i = 1; i < seam.length; i++) {
-            if (seam[i] < 0 || seam[i] > width - 1) {
+            if (seam[i] < 0 || seam[i] > colorMatrix.length - 1) {
                 throw new IllegalArgumentException("Invalid seam value");
             }
             if (Math.abs(seam[i] - seam[i - 1]) > 1) {
