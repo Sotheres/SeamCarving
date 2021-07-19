@@ -3,15 +3,17 @@ import edu.princeton.cs.algs4.Stack;
 public class PictureSP {
     private final double[][] graph;
     private final boolean[][] marked;
-    private final Stack<Integer> postorder;
+    private final Stack<Integer> postorderX;
+    private final Stack<Integer> postorderY;
     private final double[][] distTo;
     private final int[][] vertexTo;
     private final int[] seam;
 
-    public PictureSP(double[][] graph, int col, int row) {
+    public PictureSP(double[][] graph) {
         this.graph = graph;
         marked = new boolean[graph.length][graph[0].length];
-        postorder = new Stack<>();
+        postorderX = new Stack<>();
+        postorderY = new Stack<>();
         distTo = new double[graph.length][graph[0].length];
         for (int x = 0; x < graph.length; x++) {
             for (int y = 0; y < graph[0].length; y++) {
@@ -24,13 +26,12 @@ public class PictureSP {
         }
         vertexTo = new int[graph.length][graph[0].length];
 
-        dfs(col, row);
+        for (int i = graph.length - 1; i >= 0; i--) {
+            dfs(i, 0);
+        }
 
-        int postOrderRow = 0;
-        for (int postOrderCol : postorder) {
-            if (postOrderRow == graph[0].length) {
-                postOrderRow = 0;
-            }
+        for (int postOrderCol : postorderX) {
+            int postOrderRow = postorderY.pop();
             if (postOrderRow != graph[0].length - 1 && postOrderCol == 0) {
                 relax(postOrderCol, postOrderCol, postOrderRow + 1);
                 relax(postOrderCol, postOrderCol + 1, postOrderRow + 1);
@@ -42,7 +43,6 @@ public class PictureSP {
                 relax(postOrderCol, postOrderCol - 1, postOrderRow + 1);
                 relax(postOrderCol, postOrderCol, postOrderRow + 1);
             }
-            postOrderRow++;
         }
 
         double min = distTo[0][graph[0].length - 1];
@@ -88,7 +88,8 @@ public class PictureSP {
                 dfs(col, row + 1);
             }
         }
-        postorder.push(col);
+        postorderX.push(col);
+        postorderY.push(row);
     }
 
     private void relax(int colFrom, int col, int row) {
