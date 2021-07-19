@@ -10,10 +10,12 @@ public class PictureSP {
     private final int[] seam;
 
     public PictureSP(double[][] graph) {
-        this.graph = graph;
+        this.graph = new double[graph.length][graph[0].length];
+        System.arraycopy(graph, 0, this.graph, 0, graph.length);
         marked = new boolean[graph.length][graph[0].length];
         postorderX = new Stack<>();
         postorderY = new Stack<>();
+
         distTo = new double[graph.length][graph[0].length];
         for (int x = 0; x < graph.length; x++) {
             for (int y = 0; y < graph[0].length; y++) {
@@ -32,14 +34,14 @@ public class PictureSP {
 
         for (int postOrderCol : postorderX) {
             int postOrderRow = postorderY.pop();
-            if (postOrderRow != graph[0].length - 1 && postOrderCol == 0) {
+            if (postOrderCol < graph.length - 1 && postOrderRow != graph[0].length - 1 && postOrderCol == 0) {
                 relax(postOrderCol, postOrderCol, postOrderRow + 1);
                 relax(postOrderCol, postOrderCol + 1, postOrderRow + 1);
             } else if (postOrderRow != graph[0].length - 1 && postOrderCol != 0 && postOrderCol != graph.length - 1) {
                 relax(postOrderCol, postOrderCol - 1, postOrderRow + 1);
                 relax(postOrderCol, postOrderCol, postOrderRow + 1);
                 relax(postOrderCol, postOrderCol + 1, postOrderRow + 1);
-            } else if (postOrderRow != graph[0].length - 1 && postOrderCol == graph.length - 1) {
+            } else if (postOrderCol > 0 && postOrderRow != graph[0].length - 1 && postOrderCol == graph.length - 1) {
                 relax(postOrderCol, postOrderCol - 1, postOrderRow + 1);
                 relax(postOrderCol, postOrderCol, postOrderRow + 1);
             }
@@ -67,7 +69,7 @@ public class PictureSP {
             if (!marked[col][row + 1]) {
                 dfs(col, row + 1);
             }
-            if (!marked[col + 1][row + 1]) {
+            if (col < marked.length - 1 && !marked[col + 1][row + 1]) {
                 dfs(col + 1, row + 1);
             }
         } else if (row != graph[0].length - 1 && col != 0 && col != graph.length - 1) {
@@ -81,7 +83,7 @@ public class PictureSP {
                 dfs(col + 1, row + 1);
             }
         } else if (row != graph[0].length - 1 && col == graph.length - 1) {
-            if (!marked[col - 1][row + 1]) {
+            if (col > 0 && !marked[col - 1][row + 1]) {
                 dfs(col - 1, row + 1);
             }
             if (!marked[col][row + 1]) {

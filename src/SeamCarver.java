@@ -1,45 +1,54 @@
 import edu.princeton.cs.algs4.Picture;
 
 public class SeamCarver {
-    private final Picture picture;
-    private final double[][] energyMatrix;
-    private final int[][] colorMatrix;
+
+    private double[][] energyMatrix;
+    private int[][] colorMatrix;
     private int width;
     private int height;
 
-    // TODO check corner cases
     public SeamCarver(Picture picture) {
-        this.picture = new Picture(picture);
+        if (picture == null) {
+            throw new IllegalArgumentException("Constructor's argument is null");
+        }
         width = picture.width();
         height = picture.height();
-        energyMatrix = new double[picture.width()][picture.height()];
-        for (int i = 0; i < picture.width(); i++) {
-            for (int j = 0; j < picture.height(); j++) {
-                energyMatrix[i][j] = energy(i, j);
-            }
-        }
         colorMatrix = new int[picture.width()][picture.height()];
         for (int i = 0; i < picture.width(); i++) {
             for (int j = 0; j < picture.height(); j++) {
-                colorMatrix[i][j] = this.picture.getRGB(i, j);
+                colorMatrix[i][j] = picture.getRGB(i, j);
             }
         }
-
+        energyMatrix = new double[width][height];
+        for (int i = 0; i < width; i++) {
+            for (int j = 0; j < height; j++) {
+                energyMatrix[i][j] = energy(i, j);
+            }
+        }
     }
 
     public Picture picture() {
-        return new Picture(picture);
+        Picture pic = new Picture(width, height);
+        for (int i = 0; i < width; i++) {
+            for (int j = 0; j < height; j++) {
+                pic.setRGB(i, j, colorMatrix[i][j]);
+            }
+        }
+        return pic;
     }
 
     public int width() {
-        return picture.width();
+        return width;
     }
 
     public int height() {
-        return picture.height();
+        return height;
     }
 
     public double energy(int x, int y) {
+        if (x < 0 || x > energyMatrix.length - 1 || y < 0 || y > energyMatrix[0].length - 1) {
+            throw new IllegalArgumentException("Invalid x/y value");
+        }
         if (x == 0 || x == width - 1 || y == 0 || y == height - 1) {
             return 1000;
         }
@@ -85,11 +94,37 @@ public class SeamCarver {
     }
 
     public void removeHorizontalSeam(int[] seam) {
+        if (height <= 1) {
+            throw new IllegalArgumentException("Cannot remove, height is already 1");
+        }
+        transpose();
+        removeVerticalSeam(seam);
+        transpose();
+    }
 
-        height--;
+    private void transpose() {
+        energyMatrix = transposeEnergy(energyMatrix);
+        colorMatrix = transposeColor(colorMatrix);
+        int temp = height;
+        height = width;
+        width = temp;
+    }
+
+    private int[][] transposeColor(int[][] matrix) {
+        int[][] matrixT = new int[matrix[0].length][matrix.length];
+        for (int x = 0; x < matrixT.length; x++) {
+            for (int y = 0; y < matrixT[0].length; y++) {
+                matrixT[x][y] = matrix[y][x];
+            }
+        }
+        return matrixT;
     }
 
     public void removeVerticalSeam(int[] seam) {
+        if (width <= 1) {
+            throw new IllegalArgumentException("Cannot remove, width is already 1");
+        }
+        validateSeam(seam);
         for (int i = 0; i < colorMatrix[0].length; i++) {
             for (int j = seam[i]; j < colorMatrix.length - 1; j++) {
                 colorMatrix[j][i] = colorMatrix[j + 1][i];
@@ -98,25 +133,41 @@ public class SeamCarver {
         }
         width--;
         for (int i = 0; i < energyMatrix[0].length; i++) {
-            if (seam[i] > 0) {
+            if (seam[i] > 0 && seam[i] < energyMatrix.length - 1 && i > 0 && i < energyMatrix[0].length - 1) {
                 energyMatrix[seam[i] - 1][i] = energy(seam[i] - 1, i);
+                energyMatrix[seam[i] + 1][i] = energy(seam[i], i);
             }
-            energyMatrix[seam[i] + 1][i] = energy(seam[i], i);
             for (int j = seam[i]; j < energyMatrix.length - 1; j++) {
                 energyMatrix[j][i] = energyMatrix[j + 1][i];
             }
-            energyMatrix[energyMatrix.length - 1][i] = -1;
+            energyMatrix[energyMatrix.length - 1][i] = 1000;
+        }
+    }
+
+    private void validateSeam(int[] seam) {
+        if (seam == null) {
+            throw new IllegalArgumentException("Seam is null");
+        }
+        if (seam.length != colorMatrix[0].length) {
+            throw new IllegalArgumentException("Invalid seam length");
+        }
+        if (seam[0] < 0 || seam[0] > width - 1) {
+            throw new IllegalArgumentException("Invalid seam value");
+        }
+        for (int i = 1; i < seam.length; i++) {
+            if (seam[i] < 0 || seam[i] > width - 1) {
+                throw new IllegalArgumentException("Invalid seam value");
+            }
+            if (Math.abs(seam[i] - seam[i - 1]) > 1) {
+                throw new IllegalArgumentException("Invalid seams difference");
+            }
         }
     }
 
     public static void main(String[] args) {
-        Picture picture = new Picture(args[0]);
-//        System.out.printf("image is %d columns by %d rows\n", picture.width(), picture.height());
-//        picture.show();
-        SeamCarver sc = new SeamCarver(picture);
+        SeamCarver sc = new SeamCarver(new Picture(args[0]));
+        int[] seam = {6, 6, 6, 6, 7, 8, 8, 8, 9, 8, 9, 9};
 
-        for (int i : sc.findVerticalSeam()) {
-            System.out.print(i + " ");
-        }
+        sc.removeVerticalSeam(seam);
     }
 }
